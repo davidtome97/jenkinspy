@@ -1,74 +1,52 @@
 services:
-  # =========================
-  # POSTGRES LOCAL (solo perfil local)
-  # =========================
-  postgres:
-    image: postgres:16
-    container_name: demopython-postgres
+  mongo:
+    image: mongo:8
+    container_name: demopython-mongo
     profiles: ["local"]
     environment:
-      POSTGRES_DB: ${DB_NAME:-demo}
-      POSTGRES_USER: ${DB_USER:-demo}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-demo}
-    networks:
-      - demo-net
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USER:-demo}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD:-demo}
+      MONGO_INITDB_DATABASE: ${DB_NAME:-demo}
+    networks: [demo-net]
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${DB_USER:-demo} -d ${DB_NAME:-demo}"]
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 })"]
       interval: 5s
       timeout: 5s
       retries: 20
-      start_period: 15s
+      start_period: 10s
 
-  # =========================
-  # APP LOCAL (usa postgres del compose)
-  # ========================
   demo-python-local:
     build: .
     image: ${IMAGE_URI:-demo-python-local}
     container_name: demo-python-app-local
     profiles: ["local"]
     environment:
-      DB_ENGINE: postgres
-      DB_HOST: postgres
-      DB_PORT: 5432
+      DB_ENGINE: mongo
+      DB_HOST: ${DB_HOST:-mongo}
+      DB_PORT: ${DB_PORT:-27017}
       DB_NAME: ${DB_NAME:-demo}
       DB_USER: ${DB_USER:-demo}
       DB_PASSWORD: ${DB_PASSWORD:-demo}
-
-      # ✅ local: sin SSL
-      DB_SSLMODE: disable
     ports:
       - "${APP_PORT:-8082}:5000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - demo-net
+    networks: [demo-net]
     restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
 
-  # =========================
-  # APP REMOTO (RDS) - NO levanta postgres local
-  # =========================
   demo-python-remote:
     image: "${IMAGE_URI?ERROR define IMAGE_URI for remote}"
     container_name: demo-python-app-remote
     profiles: ["remote"]
     environment:
-      DB_ENGINE: postgres
-
-      DB_HOST: ${DB_HOST:?DB_HOST requerido en remote}
-      DB_PORT: ${DB_PORT:-5432}
+      DB_ENGINE: mongo
+      DB_URI: "${DB_URI?ERROR define DB_URI for remote}"
       DB_NAME: ${DB_NAME:-demo}
-      DB_USER: ${DB_USER:?DB_USER requerido en remote}
-      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD requerido en remote}
-
-      # ✅ remote: normalmente RDS con SSL
-      DB_SSLMODE: ${DB_SSLMODE:-require}
     ports:
       - "${APP_PORT:-8082}:5000"
-    networks:
-      - demo-net
+    networks: [demo-net]
     restart: unless-stopped
 
 networks:
