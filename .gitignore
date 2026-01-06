@@ -1,11 +1,14 @@
-# Entornos virtuales
-venv/
+# macOS
+.DS_Store
 
-# Cache de Python
-__pycache__/
-*.pyc
-.pytest_cache/
+# Java
+target/
+*.jar
+BOOT-INF/
 
-# Variables locales
-.envinstance/*.db
-venv/
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+
+# IDEs
+.idea/
+.vscode/
