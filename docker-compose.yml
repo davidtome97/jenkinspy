@@ -1,27 +1,27 @@
 services:
   # =========================
-  # MYSQL LOCAL
+  # POSTGRES LOCAL (solo perfil local)
   # =========================
-  mysql:
-    image: mysql:8
-    container_name: demopython-mysql
+  postgres:
+    image: postgres:16
+    container_name: demopython-postgres
     profiles: ["local"]
     environment:
-      MYSQL_DATABASE: ${DB_NAME:-demo}
-      MYSQL_USER: ${DB_USER:-demo}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-demo}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpass}
-    networks: [demo-net]
+      POSTGRES_DB: ${DB_NAME:-demo}
+      POSTGRES_USER: ${DB_USER:-demo}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-demo}
+    networks:
+      - demo-net
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p${DB_ROOT_PASSWORD:-rootpass} --silent"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${DB_USER:-demo} -d ${DB_NAME:-demo}"]
       interval: 5s
       timeout: 5s
-      retries: 30
-      start_period: 20s
+      retries: 20
+      start_period: 15s
 
-  # =======================
-  # APP LOCAL (MySQL local)
+  # =========================
+  # APP LOCAL (usa postgres del compose)
   # ========================
   demo-python-local:
     build: .
@@ -29,43 +29,46 @@ services:
     container_name: demo-python-app-local
     profiles: ["local"]
     environment:
-      DB_ENGINE: mysql
-      DB_HOST: mysql
-      DB_PORT: 3306
+      DB_ENGINE: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
       DB_NAME: ${DB_NAME:-demo}
       DB_USER: ${DB_USER:-demo}
       DB_PASSWORD: ${DB_PASSWORD:-demo}
 
-      # opcional (tu app puede ignorarlo)
-      DB_USE_SSL: "false"
+      # ✅ local: sin SSL
+      DB_SSLMODE: disable
     ports:
       - "${APP_PORT:-8082}:5000"
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
-    networks: [demo-net]
+    networks:
+      - demo-net
     restart: unless-stopped
 
   # =========================
-  # APP REMOTO (MySQL RDS)
+  # APP REMOTO (RDS) - NO levanta postgres local
   # =========================
   demo-python-remote:
     image: "${IMAGE_URI?ERROR define IMAGE_URI for remote}"
     container_name: demo-python-app-remote
     profiles: ["remote"]
     environment:
-      DB_ENGINE: mysql
-      DB_HOST: ${DB_HOST:?DB_HOST required}
-      DB_PORT: ${DB_PORT:-3306}
-      DB_NAME: ${DB_NAME:-demo}
-      DB_USER: ${DB_USER:?DB_USER required}
-      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD required}
+      DB_ENGINE: postgres
 
-      # opcional: en RDS suele ser true
-      DB_USE_SSL: ${DB_USE_SSL:-true}
+      DB_HOST: ${DB_HOST:?DB_HOST requerido en remote}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-demo}
+      DB_USER: ${DB_USER:?DB_USER requerido en remote}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD requerido en remote}
+
+      # ✅ remote: normalmente RDS con SSL
+      DB_SSLMODE: ${DB_SSLMODE:-require}
     ports:
       - "${APP_PORT:-8082}:5000"
-    networks: [demo-net]
+    networks:
+      - demo-net
     restart: unless-stopped
 
 networks:
