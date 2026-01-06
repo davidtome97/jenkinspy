@@ -3,7 +3,8 @@
 // - Yo instalo dependencias y paso tests (pytest) si existen (si no, no rompo el pipeline)
 // - Yo ejecuto Sonar si tengo credenciales (si no, lo salto)  ✅ (sirve para python si configuras sonar.python.*)
 // - Yo construyo y pusheo a ECR solo en main o cuando es tag
-// - Yo despliego en EC2 tanto en main como en tag (main => :latest, tag => :vX.Y.Z)
+// - Yo despliego en EC2 SOLO cuando es tag (tag => :vX.Y.Z)
+//   (En main solo construyo/pusheo a ECR y actualizo :latest, pero NO despliego)
 // - Yo uso docker compose profiles: local|remote
 // - Yo soporto DB_ENGINE: mysql|postgres|mongo
 // - Yo soporto BD remota: RDS (SQL) o Mongo Atlas (DB_URI)
@@ -303,8 +304,8 @@ pipeline {
     // ============================================================
     // ✅ DEPLOY EC2 (main OR tags)
     // ============================================================
-    stage('Deploy EC2 (main/tags)') {
-      when { expression { return env.IS_TAG == "true" || env.IS_MAIN == "true" } }
+    stage('Deploy EC2 (tags only)') {
+      when { expression { return env.IS_TAG == "true"} }
       steps {
 
         script {
