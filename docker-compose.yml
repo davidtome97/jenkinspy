@@ -4,7 +4,7 @@ services:
   # =========================
   mysql:
     image: mysql:8
-    container_name: demopython-mysql
+    container_name: demojava-mysql
     profiles: ["local"]
     environment:
       MYSQL_DATABASE: ${DB_NAME:-demo}
@@ -23,23 +23,22 @@ services:
   # =======================
   # APP LOCAL (MySQL local)
   # ========================
-  demo-python-local:
-    build: .
-    image: ${IMAGE_URI:-demo-python-local}
-    container_name: demo-python-app-local
+  demo-java-local:
+    image: ${IMAGE_URI:-demo-java-local}
+    container_name: demo-java-app-local
     profiles: ["local"]
     environment:
+      SPRING_PROFILES_ACTIVE: mysql
       DB_ENGINE: mysql
+
       DB_HOST: mysql
       DB_PORT: 3306
       DB_NAME: ${DB_NAME:-demo}
       DB_USER: ${DB_USER:-demo}
       DB_PASSWORD: ${DB_PASSWORD:-demo}
-
-      # opcional (tu app puede ignorarlo)
       DB_USE_SSL: "false"
     ports:
-      - "${APP_PORT:-8082}:5000"
+      - "${APP_PORT:-8082}:8081"
     depends_on:
       mysql:
         condition: service_healthy
@@ -49,22 +48,22 @@ services:
   # =========================
   # APP REMOTO (MySQL RDS)
   # =========================
-  demo-python-remote:
-    image: "${IMAGE_URI?ERROR define IMAGE_URI for remote}"
-    container_name: demo-python-app-remote
+  demo-java-remote:
+    image: ${IMAGE_URI:-demo-java-local}
+    container_name: demo-java-app-remote
     profiles: ["remote"]
     environment:
+      SPRING_PROFILES_ACTIVE: mysql
       DB_ENGINE: mysql
+
       DB_HOST: ${DB_HOST:?DB_HOST required}
       DB_PORT: ${DB_PORT:-3306}
       DB_NAME: ${DB_NAME:-demo}
       DB_USER: ${DB_USER:?DB_USER required}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD required}
-
-      # opcional: en RDS suele ser true
       DB_USE_SSL: ${DB_USE_SSL:-true}
     ports:
-      - "${APP_PORT:-8082}:5000"
+      - "${APP_PORT:-8082}:8081"
     networks: [demo-net]
     restart: unless-stopped
 
